@@ -37,6 +37,8 @@ public class KeycloakConfiguration {
 	 */
 	protected boolean useGroupPathAsCamundaGroupId = false;
 
+	protected boolean useRolesAsGroups = true;
+
 	/**
 	 * Starting with Keycloak version 23.x the group query without any other search parameters does not automatically
 	 * return subgroups within the result. Generally this has positive effects on performance and in case you do not
@@ -207,6 +209,14 @@ public class KeycloakConfiguration {
 	 */
 	public void setUseUsernameAsCamundaUserId(boolean useUsernameAsCamundaUserId) {
 		this.useUsernameAsCamundaUserId = useUsernameAsCamundaUserId;
+	}
+
+	public boolean isUseRolesAsGroups() {
+		return useRolesAsGroups;
+	}
+
+	public void setUseRolesAsGroups(boolean useRolesAsGroups) {
+		this.useRolesAsGroups = useRolesAsGroups;
 	}
 
 	/**

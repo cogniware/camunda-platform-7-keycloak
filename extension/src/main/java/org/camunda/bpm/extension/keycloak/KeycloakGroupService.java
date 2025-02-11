@@ -358,7 +358,7 @@ public class KeycloakGroupService extends KeycloakServiceBase {
 	 * @return {@code true} in case the result is a SYSTEM group.
 	 * @throws JsonException in case of errors
 	 */
-	private boolean isSystemGroup(JsonObject result) throws JsonException {
+	protected boolean isSystemGroup(JsonObject result) throws JsonException {
 		String name = getJsonString(result, "name");
 		if (Groups.CAMUNDA_ADMIN.equals(name) || 
 				name.equals(keycloakConfiguration.getAdministratorGroupName())) {

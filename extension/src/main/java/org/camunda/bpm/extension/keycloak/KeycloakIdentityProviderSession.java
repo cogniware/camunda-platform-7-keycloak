@@ -45,6 +45,7 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 	
 	protected KeycloakUserService userService;
 	protected KeycloakGroupService groupService;
+	protected KeycloakRoleService roleService;
 
 	protected QueryCache<CacheableKeycloakUserQuery, List<User>> userQueryCache;
 	protected QueryCache<CacheableKeycloakGroupQuery, List<Group>> groupQueryCache;
@@ -66,6 +67,7 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 		
 		this.userService = new KeycloakUserService(keycloakConfiguration, restTemplate, keycloakContextProvider);
 		this.groupService = new  KeycloakGroupService(keycloakConfiguration, restTemplate, keycloakContextProvider);
+		this.roleService = new KeycloakRoleService(keycloakConfiguration, restTemplate, keycloakContextProvider);
 
 		this.userQueryCache = userQueryCache;
 		this.groupQueryCache = groupQueryCache;
@@ -304,6 +306,12 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 	 */
 	@Override
 	public GroupQuery createGroupQuery() {
+		// TODO: i guess this is unnecessary, we dont need KeycloakRoleQuery, we can just use KeycloakGroupQuery
+		// and do the keycloakConfiguration.isUseRolesAsGroups() inside the identity provider method
+		if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+			return new KeycloakRoleQuery(org.camunda.bpm.engine.impl.context.Context.getProcessEngineConfiguration()
+					.getCommandExecutorTxRequired());
+		}
 		return new KeycloakGroupQuery(org.camunda.bpm.engine.impl.context.Context.getProcessEngineConfiguration()
 				.getCommandExecutorTxRequired());
 	}
@@ -313,6 +321,11 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 	 */
 	@Override
 	public GroupQuery createGroupQuery(CommandContext commandContext) {
+		// TODO: i guess this is unnecessary, we dont need KeycloakRoleQuery, we can just use KeycloakGroupQuery
+		// and do the keycloakConfiguration.isUseRolesAsGroups() inside the identity provider method
+		if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+			return new KeycloakRoleQuery();
+		}
 		return new KeycloakGroupQuery();
 	}
 
@@ -323,6 +336,11 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 	 */
 	protected long findGroupCountByQueryCriteria(KeycloakGroupQuery groupQuery) {
 		return findGroupByQueryCriteria(groupQuery).size();
+	}
+
+	protected long findRoleCountByQueryCriteria(KeycloakRoleQuery roleQuery) {
+		// TODO: implement
+		return 0;
 	}
 
 	/**
@@ -340,7 +358,37 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 		List<Group> allMatchingGroups = groupQueryCache
 						.getOrCompute(CacheableKeycloakGroupQuery.of(groupQuery), this::doFindGroupByQueryCriteria);
 
-		List<Group> processedGroups = groupService.postProcessResults(groupQuery, allMatchingGroups, resultLogger);
+		List<Group> processedGroups;
+		if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+			processedGroups = roleService.postProcessResults(groupQuery, allMatchingGroups, resultLogger);
+		} else {
+			processedGroups = groupService.postProcessResults(groupQuery, allMatchingGroups, resultLogger);
+		}
+
+		if (KeycloakPluginLogger.INSTANCE.isDebugEnabled()) {
+			resultLogger.append("]");
+			KeycloakPluginLogger.INSTANCE.groupQueryResult(resultLogger.toString());
+		}
+
+		return processedGroups;
+	}
+
+	protected List<Group> findRoleByQueryCriteria(KeycloakRoleQuery roleQuery) {
+		StringBuilder resultLogger = new StringBuilder();
+
+		if (KeycloakPluginLogger.INSTANCE.isDebugEnabled()) {
+			resultLogger.append("Keycloak role query results: [");
+		}
+
+		List<Group> allMatchingGroups = groupQueryCache
+						.getOrCompute(CacheableKeycloakGroupQuery.of(roleQuery), this::doFindGroupByQueryCriteria);
+
+		List<Group> processedGroups;
+		if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+			processedGroups = roleService.postProcessResults(roleQuery, allMatchingGroups, resultLogger);
+		} else {
+			processedGroups = groupService.postProcessResults(roleQuery, allMatchingGroups, resultLogger);
+		}
 
 		if (KeycloakPluginLogger.INSTANCE.isDebugEnabled()) {
 			resultLogger.append("]");
@@ -358,9 +406,17 @@ public class KeycloakIdentityProviderSession implements ReadOnlyIdentityProvider
 	private List<Group> doFindGroupByQueryCriteria(CacheableKeycloakGroupQuery groupQuery) {
 		if (StringUtils.hasLength(groupQuery.getUserId())) {
 			// if restriction on userId is provided, we're searching within the groups of a single user
-			return groupService.requestGroupsByUserId(groupQuery);
+			if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+				return roleService.requestGroupsByUserId(groupQuery);	
+			} else {
+				return groupService.requestGroupsByUserId(groupQuery);
+			}
 		} else {
-			return groupService.requestGroupsWithoutUserId(groupQuery);
+			if (this.keycloakConfiguration.isUseRolesAsGroups()) {
+				return roleService.requestGroupsWithoutUserId(groupQuery);	
+			} else {
+				return groupService.requestGroupsWithoutUserId(groupQuery);
+			}
 		}
 	}
 
