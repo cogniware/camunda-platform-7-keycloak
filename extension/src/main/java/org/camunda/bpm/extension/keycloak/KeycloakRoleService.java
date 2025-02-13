@@ -46,7 +46,9 @@ public class KeycloakRoleService extends KeycloakGroupService {
 
     
 	public String getKeycloakAdminGroupId(String configuredAdminGroupName) {
-		return null;
+		// used to allow all those users to have admin permissions
+		// for roles we are using just the plain role name, nothing else
+		return configuredAdminGroupName;
 	}
 
 
